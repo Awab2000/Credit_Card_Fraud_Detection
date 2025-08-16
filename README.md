@@ -9,7 +9,7 @@ where we have 492 frauds out of 284,807 transactions. The dataset is highly
 unbalanced, the positive class (frauds) account for 0.172% of all transactions. This
 task was a [competition](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud/data) held by Kaggle.
 
-The Project implements four different models using scikit-learn namely: VotingClassifier, RandomForestClassifier, LogisticRegression, MLPClassifier(NN). Acheiving an F1-Score of 0.80 and PR-AUC of 0.64 on test dataset.
+The Project implements four different models using scikit-learn namely: VotingClassifier, RandomForestClassifier, LogisticRegression, MLPClassifier(NN), KNN. Acheiving an F1-Score of 0.81 and PR-AUC of 0.65 on test dataset.
 
 ### Installation
 
@@ -55,11 +55,15 @@ credit Card Fraud Detection/
 - `Credit Card Fraud Detection EDA.ipynb`: Exploratory Data Analysis Notebook.
 
 ## Data and Modeling Pipeline
-
+Voting Classifier:
 <div>
 <img width="830" alt="Image" src="https://github.com/user-attachments/assets/24d54dae-d3e7-43be-a563-16c827634354" />
 </div>
 
+KNN:
+<div>
+<img width="534" height="544" alt="Image" src="https://github.com/user-attachments/assets/03947a76-f83e-4ce5-9c95-0ab07f531a71" />
+</div>
 
 ### How to configure this project for your own uses
 
