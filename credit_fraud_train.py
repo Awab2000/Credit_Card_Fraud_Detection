@@ -4,8 +4,10 @@ import os
 import pickle
 from datetime import datetime
 from sklearn.linear_model import LogisticRegression
+from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from credit_fraud_utils_data import load_data, remove_duplicates, under_sample, log_transform, over_sample
 from credit_fraud_utils_data import from_df_to_np, transform_train_val, poly_process, under_over_sample
 from credit_fraud_utils_eval import evaluate_model
@@ -14,7 +16,7 @@ from collections import Counter
 
 def save_model_metadata(model_name, model_hyperparameters, threshold, train_report, val_report, ap_train, ap_val, selected_features,
                         poly_degree, processor, is_log_transformed, train_rows,
-                        val_rows, imbalance_techniques):
+                        val_rows, imbalance_techniques, pca_n_components):
     json_file = "model_history.json"
 
     metrics = {
@@ -47,7 +49,8 @@ def save_model_metadata(model_name, model_hyperparameters, threshold, train_repo
         "log transformed?": is_log_transformed,
         "train # rows": train_rows,
         "val # rows": val_rows,
-        "imbalance techniques": imbalance_techniques
+        "imbalance techniques": imbalance_techniques,
+        "PCA # components": pca_n_components
     }
 
 
@@ -63,11 +66,12 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Credit Card Fraud Detection')
 
-    parser.add_argument('--model_choice', type=int, default=4,
+    parser.add_argument('--model_choice', type=int, default=5,
                         help='1 For LogisticRegression, '
                              '2 For RandomForestClassifier, '
                              '3 For NeuralNetwork, '
-                             '4 For VotingClassifier')
+                             '4 For VotingClassifier, '
+                             '5 For KNN')
 
     parser.add_argument('--train_dataset', type=str, default='Data/train.csv')
 
@@ -95,96 +99,114 @@ if __name__ == '__main__':
 
     selected_columns = df_train.columns.tolist()[:-1]
 
-    X_train, y_train = from_df_to_np(df_train)
+    X_train_full, y_train = from_df_to_np(df_train)
 
-    X_val, y_val = from_df_to_np(df_val)
+    X_val_full, y_val = from_df_to_np(df_val)
 
-    X_train, X_val, processor_type = transform_train_val(X_train, X_val, args.processing)
+    components = [3, 4, 5, 6, 7, 10, 15, 20]
 
-    # X_train, X_val = poly_process(X_train, X_val, args.poly_degree)
+    for i in range(1):
 
-    if args.log_transform:
-        X_train, X_val, _ = log_transform(X_train, X_val)
+        pca = PCA(n_components=20)
+        X_train = pca.fit_transform(X_train_full)
+        X_val = pca.transform(X_val_full)
 
-    # X_train, y_train = under_sample(X_train, y_train)
+        X_train, X_val, processor_type = transform_train_val(X_train, X_val, args.processing)
 
-    # X_train, y_train = over_sample(X_train, y_train)
+        # X_train, X_val = poly_process(X_train, X_val, args.poly_degree)
 
-    X_train_ou, y_train_ou = under_over_sample(X_train, y_train)
+        if args.log_transform:
+            X_train, X_val, _ = log_transform(X_train, X_val)
 
-    train_rows = X_train.shape[0]
-    val_rows = X_val.shape[0]
+        # X_train, y_train = under_sample(X_train, y_train)
+
+        # X_train, y_train = over_sample(X_train, y_train)
+
+        X_train_ou, y_train_ou = under_over_sample(X_train, y_train)
+
+        train_rows = X_train_ou.shape[0]
+        val_rows = X_val.shape[0]
 
 
-    if args.processing == 0:
-        processor = "No processing"
-    elif args.processing == 1:
-        processor = "Min/Max scaler"
-    else:
-        processor = "Standard Scaler"
+        if args.processing == 0:
+            processor = "No processing"
+        elif args.processing == 1:
+            processor = "Min/Max scaler"
+        else:
+            processor = "Standard Scaler"
 
-    ws = [0.01, 0.05, 0.1, 0.5, 1]
+        ws = [0.01, 0.05, 0.1, 0.5, 1]
 
-    counter = Counter(y_train)
-    ir = counter[1] / counter[0]
-    # ws = [ir]
+        counter = Counter(y_train)
+        ir = counter[1] / counter[0]
+        # ws = [ir]
 
-    depths = [3, 7, 10]
-    estimators = [5, 20, 40, 70, 100]
+        depths = [3, 7, 10]
+        estimators = [5, 20, 40, 70, 100]
 
-    hidden_layer_sizes = [25, 50, 75, 100]
-    es = [False, True]
-    lrs = [0.1, 0.01, 0.001, 0.0001]
+        hidden_layer_sizes = [25, 50, 75, 100]
+        es = [False, True]
+        lrs = [0.1, 0.01, 0.001, 0.0001]
 
-    voting_weights = [0.25, 0.5, 1.0, 1.5, 2]
-    voting_type = [True, False]
+        voting_weights = [0.25, 0.5, 1.0, 1.5, 2]
+        voting_type = [True, False]
 
-    threshold = 0.2
+        k_neighbors = [3, 4, 5, 6, 7, 10, 15, 30]
 
-    if args.model_choice == 1:
-        model_name = "LogisticRegression"
-        model = LogisticRegression(class_weight={0:0.5,1:1}, warm_start=True)
-    elif args.model_choice == 2:
-        model_name = "RandomForestClassifier"
-        model = RandomForestClassifier(class_weight={0:0.5,1:1}, max_depth=10, n_estimators=50, warm_start=True)
-    elif args.model_choice == 3:
-        model_name = "NeuralNetwork"
-        model = MLPClassifier(hidden_layer_sizes=(25,), learning_rate_init=0.1, warm_start=True, early_stopping=False, random_state=41)
-    else:   # Voting Classifier
-        model_name = "VotingClassifier"
-        model1 = RandomForestClassifier(class_weight={0: 0.5, 1: 1}, max_depth=7, n_estimators=5,
-                                        warm_start=True)
-        model2 = LogisticRegression()
-        model1.fit(X_train_ou, y_train_ou)
-        model = VotingClassifier(estimators=[('random_forest', model1), ('logistic_regression', model2) ], voting='soft', weights=[1.5,1.0])
 
-    # model.fit(X_train_ou, y_train_ou)
+        threshold = 0.2
 
-    model.fit(X_train, y_train)
+        for i in range(1):
+            if args.model_choice == 1:
+                model_name = "LogisticRegression"
+                model = LogisticRegression(class_weight={0:0.5,1:1}, warm_start=True)
+            elif args.model_choice == 2:
+                model_name = "RandomForestClassifier"
+                model = RandomForestClassifier(class_weight={0:0.5,1:1}, max_depth=10, n_estimators=50, warm_start=True)
+            elif args.model_choice == 3:
+                model_name = "NeuralNetwork"
+                model = MLPClassifier(hidden_layer_sizes=(25,), learning_rate_init=0.1, warm_start=True, early_stopping=False, random_state=41)
+            elif args.model_choice == 4:
+                model_name = "VotingClassifier"
+                model1 = RandomForestClassifier(class_weight={0: 0.5, 1: 1}, max_depth=7, n_estimators=5,
+                                                warm_start=True)
+                model2 = LogisticRegression()
+                model1.fit(X_train_ou, y_train_ou)
+                model = VotingClassifier(estimators=[('random_forest', model1), ('logistic_regression', model2) ], voting='soft', weights=[1.5,1.0])
 
-    # model_dict = {
-    #     "model": model,
-    #     "threshold": threshold,
-    #     "model_name": model_name
-    # }
-    #
-    # root_dir = 'best_model'
-    # with open(os.path.join(root_dir, 'model.pkl'), 'wb') as file:
-    #     pickle.dump(model_dict, file)
-    #
-    # root_dir = 'best_model'
-    # with open(os.path.join(root_dir, 'processor.pkl'), 'wb') as file:
-    #     pickle.dump(processor_type, file)
+            else:
+                model_name = "KNeighborsClassifier"
+                model = KNeighborsClassifier(n_neighbors=5)
 
-    train_report_dict, train_report_str, ap_train = evaluate_model(model, X_train, y_train, threshold, False)
+            # model.fit(X_train_ou, y_train_ou)
 
-    val_report_dict, val_report_str, ap_val = evaluate_model(model, X_val, y_val, threshold, False)
+            model.fit(X_train, y_train)
 
-    print(f'Threshold = {threshold}')
-    print(f'Train Report\n{train_report_str}')
-    print(f'Train Average Precision: {ap_train}')
-    print(f'Val Report\n{val_report_str}')
-    print(f'Val Average Precision: {ap_val}')
+            # model_dict = {
+            #     "model": model,
+            #     "threshold": threshold,
+            #     "model_name": model_name
+            # }
+            #
+            # root_dir = 'best_model'
+            # with open(os.path.join(root_dir, 'knn_model.pkl'), 'wb') as file:
+            #     pickle.dump(model_dict, file)
+            #
+            # with open(os.path.join(root_dir, 'knn_processor.pkl'), 'wb') as file:
+            #     pickle.dump(processor_type, file)
+            #
+            # with open(os.path.join(root_dir, 'pca.pkl'), 'wb') as file:
+            #     pickle.dump(pca, file)
 
-    # save_model_metadata(model_name, f"estimators=[('random_forest', model1=RandomForestClassifier(class_weight=(0:0.5,1:1), max_depth=7, n_estimators=5, warm_start=True)), ('logistic_regression', model2=LogisticRegression())], voting=soft}, weights=[{vw1},{vw2}]", threshold, train_report_dict, val_report_dict, ap_train, ap_val, selected_columns,
-    #                     args.poly_degree, processor, args.log_transform, train_rows, val_rows, "Oversampling SMOTE(random_state=1, sampling_strategy={1: majority_size / 100}, k_neighbors=3) + Undersampling RandomUnderSampler(random_state=1, sampling_strategy={0: minority_size * 100})") # Oversampling SMOTE(random_state=1, sampling_strategy={1: majority_size / 100}, k_neighbors=3) + Undersampling RandomUnderSampler(random_state=1, sampling_strategy={0: minority_size * 100})
+            train_report_dict, train_report_str, ap_train = evaluate_model(model, X_train, y_train, threshold, True)
+
+            val_report_dict, val_report_str, ap_val = evaluate_model(model, X_val, y_val, threshold, True)
+
+            print(f'Threshold = {threshold}')
+            print(f'Train Report\n{train_report_str}')
+            print(f'Train Average Precision: {ap_train}')
+            print(f'Val Report\n{val_report_str}')
+            print(f'Val Average Precision: {ap_val}')
+
+            # save_model_metadata(model_name, f"n_neighbors={k}", threshold, train_report_dict, val_report_dict, ap_train, ap_val, selected_columns,
+            #                     args.poly_degree, processor, args.log_transform, train_rows, val_rows, "Oversampling SMOTE(random_state=1, sampling_strategy={1: majority_size / 100}, k_neighbors=3) + Undersampling RandomUnderSampler(random_state=1, sampling_strategy={0: minority_size * 100})", c) # Oversampling SMOTE(random_state=1, sampling_strategy={1: majority_size / 100}, k_neighbors=3) + Undersampling RandomUnderSampler(random_state=1, sampling_strategy={0: minority_size * 100})

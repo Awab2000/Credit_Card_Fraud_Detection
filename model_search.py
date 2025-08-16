@@ -1,5 +1,17 @@
 import json
+import numpy as np
 
+
+
+
+EPS = 1e-12
+
+def dcmp(x, y):
+    if np.abs(x-y) <= EPS:
+        return 0
+    elif x < y:
+        return -1
+    return 1
 
 json_file = "model_history.json"
 
@@ -11,8 +23,8 @@ model_score = -1
 best_model = {}
 
 for dct in data["models"]:
-    if dct["model_name"] == "VotingClassifier":
-        if dct["metrics"]["1 val F1-Score"] > model_score:
+    if dct["model_name"] == "KNeighborsClassifier":
+        if dcmp(dct["metrics"]["1 val F1-Score"], model_score) == 1:
             best_model = dct
             model_score = dct["metrics"]["1 val F1-Score"]
 
@@ -30,4 +42,4 @@ print(best_model, "\n\n")
 
 # {'count': 1558, 'model_name': 'VotingClassifier', 'model_hyperparameters': "estimators=[('random_forest', model1=RandomForestClassifier(class_weight=(0:0.5,1:1), max_depth=7, n_estimators=5, warm_start=True)), ('logistic_regression', model2=LogisticRegression())], voting=soft, weights=[1.5,1.0]", 'Threshold': 0.2, 'date': '2025-04-14 20:36:56', 'metrics': {'0 train F1-Score': 0.9997443439778314, '1 train F1-Score': 0.8476357267950964, 'Train macro average F1-Score': 0.9236900353864639, 'Train PR-AUC': 0.7199766623064929, '0 val F1-Score': 0.9997799702519781, '1 val F1-Score': 0.8571428571428571, 'Val macro average F1-Score': 0.9284614136974176, 'Val PR-AUC': 0.7351559054011293}, 'selected features': ['Time', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V23', 'V24', 'V25', 'V26', 'V27', 'V28', 'Amount'], 'polynomial degree': 1, 'processor': 'Min/Max scaler', 'log transformed?': 1, 'train # rows': 170436, 'val # rows': 56898, 'imbalance techniques': 'Oversampling SMOTE(random_state=1, sampling_strategy={1: majority_size / 100}, k_neighbors=3) + Undersampling RandomUnderSampler(random_state=1, sampling_strategy={0: minority_size * 100})'}
 
-
+# {'count': 1695, 'model_name': 'KNeighborsClassifier', 'model_hyperparameters': 'n_neighbors=5', 'Threshold': 0.2, 'date': '2025-08-13 14:38:28', 'metrics': {'0 train F1-Score': 0.9997620034024699, '1 train F1-Score': 0.847457627118644, 'Train macro average F1-Score': 0.923609815260557, 'Train PR-AUC': 0.7288606744003492, '0 val F1-Score': 0.9997712073213657, '1 val F1-Score': 0.8333333333333334, 'Val macro average F1-Score': 0.9165522703273495, 'Val PR-AUC': 0.7089577792711633}, 'selected features': ['Time', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V23', 'V24', 'V25', 'V26', 'V27', 'V28', 'Amount'], 'polynomial degree': 1, 'processor': 'Min/Max scaler', 'log transformed?': 1, 'train # rows': 170436, 'val # rows': 56898, 'imbalance techniques': 'None', 'PCA # components': 20}
